@@ -1,9 +1,8 @@
 import streamlit as st
 
 if "auth" not in st.session_state or not st.session_state["auth"]:
-    st.warning("Accès refusé")
     st.stop()
-  
+    
 import streamlit as st
 import pandas as pd
 from dotenv import load_dotenv
