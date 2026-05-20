@@ -1,8 +1,6 @@
 import streamlit as st
 import pandas as pd
 from openai import OpenAI
-import json
-import os
 
 # ======================
 # 🔒 PROTECTION
@@ -21,31 +19,11 @@ st.title("📊 IA Data Analyst PRO")
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # ======================
-# MEMORY FILE
-# ======================
-MEMORY_FILE = "memory/chat_memory.json"
-
-# ======================
-# MEMORY FUNCTIONS
-# ======================
-
-def load_memory():
-    if os.path.exists(MEMORY_FILE):
-        with open(MEMORY_FILE, "r") as file:
-            return json.load(file)
-    return []
-
-def save_memory(memory):
-    os.makedirs(os.path.dirname(MEMORY_FILE), exist_ok=True)
-    with open(MEMORY_FILE, "w") as file:
-        json.dump(memory, file, indent=4)
-
-# ======================
 # SESSION STATE
 # ======================
 
 if "history" not in st.session_state:
-    st.session_state.history = load_memory()
+    st.session_state.history = []
 
 if "df_loaded" not in st.session_state:
     st.session_state.df_loaded = None
@@ -75,12 +53,15 @@ if st.session_state.df_loaded is not None:
     # ======================
 
     def get_memory_context():
+
         if not st.session_state.history:
             return "Aucun historique."
 
         context = ""
+
         for item in st.session_state.history[-5:]:
             context += f"User: {item['question']}\nAI: {item['answer']}\n\n"
+
         return context
 
     # ======================
@@ -136,13 +117,14 @@ RÉPONSE :
         with st.spinner("Analyse en cours..."):
             result = generate_result(question)
 
-        # sauvegarde mémoire
+        # ======================
+        # SAVE MEMORY (SESSION ONLY)
+        # ======================
+
         st.session_state.history.append({
             "question": question,
             "answer": result
         })
-
-        save_memory(st.session_state.history)
 
         st.subheader("📌 Résultat")
         st.write(result)
