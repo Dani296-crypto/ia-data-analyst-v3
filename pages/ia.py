@@ -14,16 +14,11 @@ if not st.session_state.get("auth", False):
 # ======================
 # CONFIG
 # ======================
-st.set_page_config(
-    page_title="IA Data Analyst PRO",
-    layout="wide"
-)
+st.set_page_config(page_title="IA Data Analyst PRO", layout="wide")
 
 st.title("📊 IA Data Analyst PRO")
 
-client = OpenAI(
-    api_key=st.secrets["OPENAI_API_KEY"]
-)
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # ======================
 # MEMORY FILE
@@ -46,7 +41,7 @@ def save_memory(memory):
         json.dump(memory, file, indent=4)
 
 # ======================
-# INIT SESSION STATE
+# SESSION STATE
 # ======================
 
 if "history" not in st.session_state:
@@ -56,17 +51,16 @@ if "df_loaded" not in st.session_state:
     st.session_state.df_loaded = None
 
 # ======================
-# FILE UPLOAD
+# UPLOAD
 # ======================
 
 file = st.file_uploader("📂 Upload Excel", type=["xlsx"])
 
 if file:
-    df = pd.read_excel(file)
-    st.session_state.df_loaded = df
+    st.session_state.df_loaded = pd.read_excel(file)
 
 # ======================
-# SI DONNÉES DISPONIBLES
+# MAIN APP
 # ======================
 
 if st.session_state.df_loaded is not None:
@@ -77,16 +71,17 @@ if st.session_state.df_loaded is not None:
     st.dataframe(df)
 
     # ======================
-    # CHARGER MÉMOIRE POUR IA
+    # MEMORY CONTEXT
     # ======================
+
     def get_memory_context():
-        if len(st.session_state.history) == 0:
+        if not st.session_state.history:
             return "Aucun historique."
 
-        text = ""
-        for item in st.session_state.history[-5:]:  # on garde les 5 derniers
-            text += f"User: {item['question']}\nAI: {item['answer']}\n\n"
-        return text
+        context = ""
+        for item in st.session_state.history[-5:]:
+            context += f"User: {item['question']}\nAI: {item['answer']}\n\n"
+        return context
 
     # ======================
     # IA FUNCTION
@@ -99,17 +94,8 @@ if st.session_state.df_loaded is not None:
         prompt = f"""
 Tu es un data analyst expert universel.
 
-Voici l'historique de la conversation :
+Historique :
 {memory_context}
-
-MISSION :
-Analyser un fichier Excel et répondre aux questions.
-
-RÈGLES :
-- Utilise uniquement les données fournies
-- Fais les calculs directement
-- Utilise l'historique si nécessaire pour comprendre le contexte
-- Si info absente → "non disponible"
 
 DONNÉES :
 {df.to_string(index=False)}
@@ -126,21 +112,15 @@ RÉPONSE :
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {
-                    "role": "system",
-                    "content": "Data analyst précis et business"
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
+                {"role": "system", "content": "Data analyst précis et business"},
+                {"role": "user", "content": prompt}
             ]
         )
 
         return response.choices[0].message.content
 
     # ======================
-    # UI QUESTION
+    # UI
     # ======================
 
     st.subheader("🧠 Pose ta question")
@@ -149,17 +129,14 @@ RÉPONSE :
 
     if st.button("Analyser"):
 
-        if question.strip() == "":
+        if not question.strip():
             st.warning("Pose une question")
             st.stop()
 
         with st.spinner("Analyse en cours..."):
             result = generate_result(question)
 
-        # ======================
-        # AJOUT MÉMOIRE
-        # ======================
-
+        # sauvegarde mémoire
         st.session_state.history.append({
             "question": question,
             "answer": result
@@ -167,15 +144,11 @@ RÉPONSE :
 
         save_memory(st.session_state.history)
 
-        # ======================
-        # RESULTAT
-        # ======================
-
         st.subheader("📌 Résultat")
         st.write(result)
 
     # ======================
-    # HISTORIQUE UI
+    # HISTORIQUE
     # ======================
 
     if st.session_state.history:
@@ -184,7 +157,6 @@ RÉPONSE :
 
         for chat in reversed(st.session_state.history):
 
-            with st.container():
-                st.write("🧑 Question :", chat["question"])
-                st.write("🤖 Réponse :", chat["answer"])
-                st.markdown("---")
+            st.write("🧑 Question :", chat["question"])
+            st.write("🤖 Réponse :", chat["answer"])
+            st.markdown("---")
